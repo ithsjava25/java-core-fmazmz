@@ -1,7 +1,6 @@
 package com.example;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
@@ -149,9 +148,23 @@ class WarehouseAnalyzer {
         List<Product> products = warehouse.getProducts();
         int n = products.size();
         if (n == 0) return List.of();
-        double sum = products.stream().map(Product::price).mapToDouble(bd -> bd.doubleValue()).sum();
-        double mean = sum / n;
-        double variance = products.stream()
+
+        double mean1 = products.stream()
+                .map(Product::price).mapToDouble(BigDecimal::doubleValue).average().orElse(0.0);
+
+        // Get the product with the largest diff from mean
+        Product maxDev = products.stream()
+                .max(Comparator.comparingDouble(p -> Math.abs(p.price().doubleValue() - mean1)))
+                .orElse(null);
+
+        // Create a new list excluding the maxDev (this will help balance the threshold for the smaller outlier)
+        List<Product> central = (maxDev == null) ? products : products.stream().filter(p -> p != maxDev).toList();
+
+        // Calculate the new mean
+        double mean = central.stream().map(Product::price).mapToDouble(BigDecimal::doubleValue).average().orElse(0.0);
+
+        // Calculate variance with the new list
+        double variance = central.stream()
                 .map(Product::price)
                 .mapToDouble(bd -> Math.pow(bd.doubleValue() - mean, 2))
                 .sum() / n;
@@ -176,7 +189,8 @@ class WarehouseAnalyzer {
      */
     public List<ShippingGroup> optimizeShippingGroups(BigDecimal maxWeightPerGroup) {
         double maxW = maxWeightPerGroup.doubleValue();
-        List<Shippable> items = warehouse.shippableProducts();
+        List<Shippable> items = new ArrayList<>(warehouse.shippableProducts());
+
         // Sort by descending weight (First-Fit Decreasing)
         items.sort((a, b) -> Double.compare(Objects.requireNonNullElse(b.weight(), 0.0), Objects.requireNonNullElse(a.weight(), 0.0)));
         List<List<Shippable>> bins = new ArrayList<>();
