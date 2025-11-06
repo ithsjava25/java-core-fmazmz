@@ -24,11 +24,17 @@ public class ElectronicsProduct extends Product implements Shippable {
 
   @Override
   public BigDecimal calculateShippingCost() {
-    return null;
+    BigDecimal basePrice = BigDecimal.valueOf(79);
+    BigDecimal additionalPrice = BigDecimal.valueOf(49);
+
+    if (weight.compareTo(BigDecimal.valueOf(5.0)) > 0) {
+      return basePrice.add(additionalPrice);
+    };
+    return basePrice;
   }
 
   @Override
   public double weight() {
-    return 0;
+    return weight.doubleValue();
   }
 }
